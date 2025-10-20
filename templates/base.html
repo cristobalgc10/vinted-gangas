@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Vinted Scraper{% endblock %}</title>
+
+    <!-- TailwindCSS desde CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- HTMX para interactividad -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10/dist/ext/json-enc.js"></script>
+
+    <!-- Alpine.js para interactividad ligera -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <style>
+        [x-cloak] {
+            display: none !important;
+        }
+
+        .htmx-swapping {
+            opacity: 0;
+            transition: opacity 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-enter {
+            animation: slideDown 0.2s ease-out;
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOutRight {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+
+        .toast-enter {
+            animation: slideInRight 0.3s ease-out;
+        }
+
+        .toast-exit {
+            animation: slideOutRight 0.3s ease-out;
+        }
+
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50">
+    <!-- Navegación superior -->
+    <nav class="bg-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <!-- Logo y navegación principal -->
+                <div class="flex">
+                    <!-- Logo -->
+                    <div class="flex-shrink-0 flex items-center">
+                        <a href="/" class="flex items-center space-x-2">
+                            <span class="text-2xl">🔍</span>
+                            <span class="font-bold text-xl text-gray-800">Vinted Scraper</span>
+                        </a>
+                    </div>
+
+                    <!-- Links de navegación -->
+                    <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+                        <a href="/"
+                            class="inline-flex items-center px-1 pt-1 border-b-2 {% if request.url.path == '/' %}border-blue-500 text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %}">
+                            Dashboard
+                        </a>
+                        <a href="/searches"
+                            class="inline-flex items-center px-1 pt-1 border-b-2 {% if '/searches' in request.url.path %}border-blue-500 text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %}">
+                            Búsquedas
+                        </a>
+                        <a href="/products"
+                            class="inline-flex items-center px-1 pt-1 border-b-2 {% if '/products' in request.url.path %}border-blue-500 text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %}">
+                            Productos
+                        </a>
+                        <a href="/scheduler"
+                            class="inline-flex items-center px-1 pt-1 border-b-2 {% if '/scheduler' in request.url.path %}border-blue-500 text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %}">
+                            📅 Scheduler
+                        </a>
+                        <a href="/settings"
+                            class="inline-flex items-center px-1 pt-1 border-b-2 {% if '/settings' in request.url.path %}border-blue-500 text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %}">
+                            ⚙️ Configuración
+                        </a>
+                        <a href="/help"
+                            class="inline-flex items-center px-1 pt-1 border-b-2 {% if request.url.path == '/help' %}border-blue-500 text-gray-900{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %}">
+                            Ayuda
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navegación móvil -->
+        <div class="sm:hidden" x-data="{ open: false }">
+            <!-- Contenido del menú móvil aquí -->
+        </div>
+    </nav>
+
+    <!-- Contenido principal -->
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div class="px-4 py-6 sm:px-0">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- Contenedor de modales -->
+    <div id="modal-container" class="fixed inset-0 z-50 hidden">
+        <div class="modal-backdrop fixed inset-0" onclick="closeModal()"></div>
+        <div class="fixed inset-0 flex items-center justify-center p-4">
+            <div id="modal-content"
+                class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto modal-enter relative">
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenedor de notificaciones toast -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col space-y-2">
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white mt-12">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <div class="text-center text-gray-500 text-sm">
+                <p>Vinted Scraper © 2025 - Proyecto educativo</p>
+                <p class="mt-1">
+                    <a href="/docs" class="text-blue-500 hover:text-blue-600">API Docs</a> ·
+                    <a href="https://github.com" class="text-blue-500 hover:text-blue-600">GitHub</a>
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts adicionales -->
+    <script>
+        // SISTEMA DE MODALES
+        function openModal(url) {
+            const modalContainer = document.getElementById('modal-container');
+            const modalContent = document.getElementById('modal-content');
+
+            modalContainer.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+
+            fetch(url)
+                .then(response => response.text())
+                .then(html => {
+                    modalContent.innerHTML = html;
+                    htmx.process(modalContent);
+                })
+                .catch(error => {
+                    console.error('Error cargando modal:', error);
+                    modalContent.innerHTML = '<div class="p-8 text-center text-red-600">Error cargando contenido</div>';
+                });
+        }
+
+        function closeModal() {
+            const modalContainer = document.getElementById('modal-container');
+            modalContainer.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+
+        // SISTEMA DE NOTIFICACIONES TOAST
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            const bgColor = type === 'success' ? 'bg-green-500' :
+                type === 'error' ? 'bg-red-500' :
+                    type === 'warning' ? 'bg-yellow-500' : 'bg-blue-500';
+
+            const icon = type === 'success' ? '✅' :
+                type === 'error' ? '❌' :
+                    type === 'warning' ? '⚠️' : 'ℹ️';
+
+            toast.className = `${bgColor} text-white px-6 py-4 rounded-lg shadow-lg flex items-center space-x-3 toast-enter min-w-[300px]`;
+            toast.innerHTML = `
+                <span class="text-xl">${icon}</span>
+                <span class="flex-1">${message}</span>
+                <button onclick="this.parentElement.remove()" class="text-white hover:text-gray-200">✕</button>
+            `;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('toast-enter');
+                toast.classList.add('toast-exit');
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        // EVENTOS HTMX
+        document.body.addEventListener('htmx:configRequest', function (evt) {
+            const params = evt.detail.parameters;
+
+            // Convertir strings a números
+            if (params.price_from !== null && params.price_from !== undefined) {
+                params.price_from = parseFloat(params.price_from);
+            }
+            if (params.price_to !== null && params.price_to !== undefined) {
+                params.price_to = parseFloat(params.price_to);
+            }
+            if (params.interval_minutes) {
+                params.interval_minutes = parseInt(params.interval_minutes);
+            }
+
+            // Convertir arrays JSON
+            const arrayFields = ['category_ids', 'brand_ids', 'size_ids', 'color_ids', 'material_ids', 'status_ids'];
+            arrayFields.forEach(field => {
+                if (params[field] && typeof params[field] === 'string') {
+                    try {
+                        params[field] = JSON.parse(params[field]);
+                    } catch (e) {
+                        delete params[field];
+                    }
+                }
+            });
+        });
+
+        document.body.addEventListener('htmx:afterSwap', function (evt) {
+            if (evt.detail.successful && evt.detail.xhr.status === 200) {
+                const hxPost = evt.detail.elt.getAttribute('hx-post');
+                const url = hxPost || '';
+                if (url.match(/\/api\/products\/.+\/favorite/)) {
+                    return;
+                }
+                try {
+                    const response = JSON.parse(evt.detail.xhr.response);
+                    if (response.message) {
+                        showToast(response.message, 'success');
+                    }
+                } catch (e) {
+                    // No es JSON
+                }
+            }
+        });
+
+        document.body.addEventListener('htmx:responseError', function (evt) {
+            console.error('❌ HTMX Error:', evt.detail);
+
+            let errorMsg = 'Error al realizar la acción';
+
+            try {
+                const response = JSON.parse(evt.detail.xhr.response);
+                if (response.detail) {
+                    if (Array.isArray(response.detail)) {
+                        errorMsg = 'Error de validación: ' + response.detail.map(e => e.msg).join(', ');
+                    } else {
+                        errorMsg = response.detail;
+                    }
+                }
+            } catch (e) {
+                // No es JSON válido
+            }
+
+            showToast(errorMsg, 'error');
+        });
+
+        document.body.addEventListener('htmx:afterRequest', function (evt) {
+            if (evt.detail.successful) {
+                const hxPost = evt.detail.elt.getAttribute('hx-post');
+                const hxPut = evt.detail.elt.getAttribute('hx-put');
+                const url = hxPost || hxPut;
+
+                if (url && url.match(/\/api\/products\/.+\/favorite/)) {
+                    return;
+                }
+
+                if (url && url.includes('/api/searches')) {
+                    closeModal();
+                    showToast('Cambios guardados correctamente', 'success');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 500);
+                }
+            }
+        });
+
+        // GESTIÓN DE FAVORITOS
+        function updateFavoriteState(productId, responseText) {
+            try {
+                const response = JSON.parse(responseText);
+
+                if (!response.success) {
+                    showToast('Error al actualizar favorito', 'error');
+                    return;
+                }
+
+                const isFavorite = response.is_favorite;
+
+                const button = document.getElementById(`fav-btn-${productId}`);
+                if (button) {
+                    if (isFavorite) {
+                        button.classList.remove('bg-gray-200', 'hover:bg-gray-300', 'text-gray-700');
+                        button.classList.add('bg-red-500', 'hover:bg-red-600', 'text-white');
+                        button.innerHTML = '❤️';
+                        button.title = 'Quitar de favoritos';
+                    } else {
+                        button.classList.remove('bg-red-500', 'hover:bg-red-600', 'text-white');
+                        button.classList.add('bg-gray-200', 'hover:bg-gray-300', 'text-gray-700');
+                        button.innerHTML = '🤍';
+                        button.title = 'Añadir a favoritos';
+                    }
+                }
+
+                const productCard = document.getElementById(`product-${productId}`);
+                if (productCard) {
+                    const isGridView = productCard.classList.contains('rounded-lg') &&
+                        !productCard.classList.contains('py-4');
+
+                    if (isGridView) {
+                        if (isFavorite) {
+                            productCard.classList.add('ring-4', 'ring-red-500');
+                        } else {
+                            productCard.classList.remove('ring-4', 'ring-red-500');
+                        }
+                    } else {
+                        const badge = document.getElementById(`fav-badge-${productId}`);
+                        if (badge) {
+                            if (isFavorite) {
+                                badge.classList.remove('hidden');
+                                badge.classList.add('bg-red-500');
+                            } else {
+                                badge.classList.add('hidden');
+                            }
+                        }
+                    }
+                }
+
+                showToast(response.message, 'success');
+
+            } catch (error) {
+                console.error('Error parsing favorite response:', error);
+                showToast('Error al procesar la respuesta', 'error');
+            }
+        }
+
+        // UTILIDADES
+        function refreshSection(selector) {
+            htmx.trigger(selector, 'refresh');
+        }
+
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+
+</html>

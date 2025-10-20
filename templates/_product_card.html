@@ -1,0 +1,124 @@
+{# Componente: Tarjeta de producto (vista grid) #}
+{# Uso: {% include "_product_card.html" %} #}
+
+<div id="product-{{ product.id }}"
+    class="bg-white rounded-lg shadow-sm hover:shadow-lg transition-shadow overflow-hidden flex flex-col min-h-[440px] {% if product.is_favorite %}ring-4 ring-red-500{% endif %}">
+
+    <!-- Imagen y badges -->
+    <div class="relative">
+        <a href="{{ product.url }}" target="_blank" class="block">
+            {% if product.image_url %}
+            <img src="{{ product.image_url }}" alt="{{ product.title }}" class="w-full h-64 object-cover">
+            {% else %}
+            <div class="w-full h-64 bg-gray-200 flex items-center justify-center">
+                <span class="text-6xl">👕</span>
+            </div>
+            {% endif %}
+        </a>
+
+        <!-- Badge NUEVO (top-left) -->
+        {% if not product.is_notified %}
+        <span
+            class="absolute top-2 left-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-sm px-1.5 py-1 rounded-full shadow-lg"
+            title="Nuevo">
+            ✨
+        </span>
+        {% endif %}
+
+        <!-- Badge marca (top-right) -->
+        {% if product.brand %}
+        <div class="absolute top-2 right-2">
+            <span
+                class="bg-gray-900/90 backdrop-blur-sm text-white text-xs font-semibold px-2.5 py-1.5 rounded shadow-lg">
+                🏷️ {{ product.brand }}
+            </span>
+        </div>
+        {% endif %}
+
+        <!-- Badge de búsqueda (bottom-right) con ancho fijo -->
+        {% if product.search and product.search.name %}
+        <div class="absolute bottom-2 right-2">
+            <span
+                class="bg-purple-500/90 backdrop-blur-sm text-white text-xs font-semibold px-2.5 py-1.5 rounded shadow-lg block w-32 truncate"
+                title="🔍 {{ product.search.name }}">
+                🔍 {{ product.search.name }}
+            </span>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Contenido -->
+    <div class="p-4 flex flex-col flex-1 justify-between">
+        <!-- Título -->
+        <a href="{{ product.url }}" target="_blank" class="block">
+            <h3 class="font-semibold text-gray-900 hover:text-blue-600 truncate mb-2 min-h-[28px]"
+                title="{{ product.title }}">
+                {{ product.title }}
+            </h3>
+        </a>
+
+        <!-- Precio y condición -->
+        <div class="flex items-center justify-between mb-3">
+            <span class="text-2xl font-bold text-green-600">{{ product.price }}€</span>
+            {% if product.condition %}
+            {% set cond = product.condition.lower() %}
+            {% if 'nuevo con etiquetas' in cond %}
+            <span class="text-xl text-blue-400 font-bold" title="{{ product.condition }}">💎</span>
+            {% elif 'nuevo sin etiquetas' in cond %}
+            <span class="text-xl text-green-600 font-bold" title="{{ product.condition }}">🏅</span>
+            {% elif 'muy bueno' in cond %}
+            <span class="text-xl text-yellow-400 font-bold" title="{{ product.condition }}">⭐</span>
+            {% elif 'bueno' in cond %}
+            <span class="text-xl text-green-500 font-bold" title="{{ product.condition }}">🟩</span>
+            {% elif 'satisfactorio' in cond %}
+            <span class="text-xl text-red-500 font-bold" title="{{ product.condition }}">🟥</span>
+            {% else %}
+            <span class="text-xl" title="{{ product.condition }}">❔</span>
+            {% endif %}
+            {% endif %}
+        </div>
+
+        <!-- Detalles del producto -->
+        <div class="space-y-1 text-sm text-gray-600 mb-3">
+            {% if product.size %}
+            <p>📏 Talla: {{ product.size }}</p>
+            {% endif %}
+
+            {% if product.seller and product.seller.login %}
+            <div class="mb-1">
+                <span class="font-medium text-gray-800">👤 {{ product.seller.login }}</span>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-gray-500">
+                {% if product.seller.feedback_reputation is not none %}
+                ⭐ {{ (product.seller.feedback_reputation * 100) | round(1) }}%
+                {% endif %}
+                {% if product.seller.feedback_count is not none %}
+                🗳️ {{ product.seller.feedback_count }}
+                {% endif %}
+                {% if product.seller.country_code %}
+                <span title="{{ product.seller.country_title }}">{{ product.seller.country_code | country_flag }}</span>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Fecha de descubrimiento -->
+        <p class="text-xs text-gray-400 mb-3">
+            🔍 {{ product.found_at.strftime('%d/%m/%Y %H:%M:%S') }}
+        </p>
+
+        <!-- Botones de acción -->
+        <div class="flex space-x-2 mt-auto">
+            <a href="{{ product.url }}" target="_blank"
+                class="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-center px-4 py-2 rounded text-sm font-medium transition-colors">
+                Ver en Vinted
+            </a>
+            <button id="fav-btn-{{ product.id }}" hx-post="/api/products/{{ product.id }}/favorite" hx-swap="none"
+                hx-on::after-request="updateFavoriteState({{ product.id }}, event.detail.xhr.response)"
+                class="px-4 py-2 rounded text-sm transition-colors font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 {% if product.is_favorite %}bg-red-500 hover:bg-red-600 text-white{% else %}bg-gray-200 hover:bg-gray-300 text-gray-700{% endif %}"
+                title="{% if product.is_favorite %}Quitar de favoritos{% else %}Añadir a favoritos{% endif %}">
+                {% if product.is_favorite %}❤️{% else %}🤍{% endif %}
+            </button>
+        </div>
+    </div>
+</div>

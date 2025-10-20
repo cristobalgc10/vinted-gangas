@@ -1,0 +1,20 @@
+{# Fragmento: Lista de productos (para HTMX) - Vista filas #}
+{# Endpoint: /products con header HX-Request y view=list #}
+
+{% if not products %}
+<div class="bg-white rounded-lg shadow-sm p-12 text-center">
+    <div class="text-6xl mb-4">📦</div>
+    <h3 class="text-xl font-semibold text-gray-900 mb-2">No hay productos todavía</h3>
+    <p class="text-gray-600 mb-6">Crea búsquedas activas para empezar a encontrar productos</p>
+    <a href="/"
+       class="inline-block bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg font-medium transition-colors">
+        Ver mis búsquedas
+    </a>
+</div>
+{% else %}
+<div class="divide-y divide-gray-200 bg-white rounded-lg shadow-sm">
+    {% for product in products %}
+        {% include "_product_row.html" %}
+    {% endfor %}
+</div>
+{% endif %}

@@ -1,0 +1,380 @@
+<!-- Modal Header -->
+<div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+    <h2 class="text-2xl font-bold text-gray-900">{{ title }}</h2>
+    <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 text-2xl font-bold">
+        ×
+    </button>
+</div>
+
+<!-- Modal Body (scrollable) -->
+<div class="p-6" x-data="{ 
+    mode: 'simple',
+    isActive: {% if search %}{{ 'true' if search.is_active else 'false' }}{% else %}true{% endif %}
+}">
+    <!-- Formulario con HTMX (envía JSON en lugar de FormData) -->
+    {% if search %}
+    <form hx-put="{{ action }}" hx-swap="none" hx-ext="json-enc" class="space-y-6" data-search-form>
+        {% else %}
+        <form hx-post="{{ action }}" hx-swap="none" hx-ext="json-enc" class="space-y-6" data-search-form>
+            {% endif %}
+
+            <!-- Campo oculto para el modo -->
+            <input type="hidden" name="__mode" x-model="mode">
+            <input type="hidden" name="__isActive" x-model="isActive">
+
+            <!-- Información básica (siempre visible) -->
+            <div class="space-y-4">
+                <h3 class="text-lg font-semibold text-gray-900 border-b pb-2">Información básica</h3>
+
+                <!-- Nombre de la búsqueda -->
+                <div>
+                    <label for="name" class="block text-sm font-medium text-gray-700 mb-1">
+                        Nombre de la búsqueda <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" id="name" name="name" value="{% if search %}{{ search.name }}{% endif %}"
+                        required autofocus
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Ej: Chollos Nintendo 3DS">
+                </div>
+            </div>
+
+            <!-- TABS: Modo Simple vs Modo Avanzado -->
+            <div class="space-y-4">
+                <h3 class="text-lg font-semibold text-gray-900 border-b pb-2">Filtros de búsqueda</h3>
+
+                <!-- Tabs Header -->
+                <div class="flex space-x-2 border-b border-gray-200">
+                    <button type="button" @click="mode = 'simple'"
+                        :class="mode === 'simple' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
+                        class="px-4 py-2 border-b-2 font-medium text-sm transition-colors">
+                        🔍 Búsqueda Simple
+                    </button>
+                    <button type="button" @click="mode = 'advanced'"
+                        :class="mode === 'advanced' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
+                        class="px-4 py-2 border-b-2 font-medium text-sm transition-colors">
+                        🔗 URL de Vinted
+                    </button>
+                </div>
+
+                <!-- MODO SIMPLE -->
+                <div x-show="mode === 'simple'" x-transition class="space-y-4">
+                    <!-- Texto de búsqueda -->
+                    <div>
+                        <label for="query" class="block text-sm font-medium text-gray-700 mb-1">
+                            Palabras clave <span class="text-gray-400 text-xs">(opcional)</span>
+                        </label>
+                        <input type="text" id="query" name="query" value="{% if search %}{{ search.query }}{% endif %}"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Ej: nintendo 3ds">
+                        <p class="mt-1 text-xs text-gray-500">💡 Puedes buscar solo por precio o filtros sin texto</p>
+                    </div>
+
+                    <!-- Precio -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Rango de precio</label>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="price_from" class="block text-xs text-gray-600 mb-1">Mínimo (€)</label>
+                                <input type="number" id="price_from" name="price_from"
+                                    value="{% if search and search.price_from %}{{ search.price_from }}{% endif %}"
+                                    step="0.01" min="0"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    placeholder="0">
+                            </div>
+                            <div>
+                                <label for="price_to" class="block text-xs text-gray-600 mb-1">Máximo (€)</label>
+                                <input type="number" id="price_to" name="price_to"
+                                    value="{% if search and search.price_to %}{{ search.price_to }}{% endif %}"
+                                    step="0.01" min="0"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    placeholder="Sin límite">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Orden de resultados -->
+                    <div>
+                        <label for="order" class="block text-sm font-medium text-gray-700 mb-1">
+                            Ordenar por
+                        </label>
+                        <select id="order" name="order"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="newest_first" {% if not search or search.order=='newest_first' %}selected{%
+                                endif %}>
+                                ⚡ Más reciente (recomendado para chollos)
+                            </option>
+                            <option value="relevance" {% if search and search.order=='relevance' %}selected{% endif %}>
+                                🎯 Relevancia
+                            </option>
+                            <option value="price_low_to_high" {% if search and search.order=='price_low_to_high'
+                                %}selected{% endif %}>
+                                💰 Precio: menor a mayor
+                            </option>
+                            <option value="price_high_to_low" {% if search and search.order=='price_high_to_low'
+                                %}selected{% endif %}>
+                                💎 Precio: mayor a menor
+                            </option>
+                        </select>
+                        <p class="mt-1 text-xs text-gray-500">
+                            ⚡ <strong>Tip:</strong> "Más reciente" es ideal para encontrar chollos antes que nadie
+                        </p>
+                    </div>
+
+                    <!-- Info: Filtros avanzados próximamente -->
+                    <div class="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                        <p class="text-xs text-gray-600">
+                            💡 <strong>¿Necesitas filtros avanzados?</strong> (marca, talla, color, etc.)
+                            <br>Usa la pestaña <strong>"URL de Vinted"</strong> → configura tu búsqueda en Vinted →
+                            copia la
+                            URL
+                        </p>
+                    </div>
+                </div>
+
+                <!-- MODO AVANZADO (URL) -->
+                <div x-show="mode === 'advanced'" x-transition class="space-y-4">
+                    <div>
+                        <label for="vinted_url" class="block text-sm font-medium text-gray-700 mb-1">
+                            URL de Vinted
+                        </label>
+                        <input type="url" id="vinted_url" name="vinted_url"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                            placeholder="https://www.vinted.es/catalog?search_text=nike&price_from=15&price_to=30&brand_ids[]=53..."
+                            value="{% if search and search.vinted_query_string %}https://www.vinted.es/catalog?{{ search.vinted_query_string }}{% endif %}">
+
+                        <div class="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <p class="text-sm text-blue-900 font-medium mb-2">📖 Cómo usar:</p>
+                            <ol class="text-xs text-blue-800 space-y-1 list-decimal list-inside">
+                                <li>Ve a <a href="https://www.vinted.es" target="_blank"
+                                        class="underline font-medium">Vinted.es</a></li>
+                                <li>Haz tu búsqueda con <strong>todos los filtros</strong> que quieras (marca, talla,
+                                    color,
+                                    estado...)</li>
+                                <li>Copia la <strong>URL completa</strong> de la barra de direcciones</li>
+                                <li>Pégala aquí y el sistema extraerá todos los filtros automáticamente ✨</li>
+                            </ol>
+                        </div>
+
+                        <p class="mt-2 text-xs text-gray-500">
+                            ⚡ Ventaja: Todos los filtros de Vinted soportados automáticamente (categorías, marcas,
+                            tallas,
+                            colores, materiales, estados...)
+                        </p>
+                    </div>
+
+                    {% if search and (search.category_ids or search.brand_ids or search.size_ids or search.color_ids or
+                    search.material_ids or search.status_ids or search.platform_ids) %}
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-2">
+                        <p class="text-sm text-blue-900 mb-3">
+                            <strong>📌 Filtros extraídos de la URL de Vinted:</strong>
+                        </p>
+                        <div class="space-y-2 text-sm">
+                            {% if search.category_ids %}
+                            <div class="flex items-start">
+                                <span class="font-medium text-blue-900 w-32">Categorías:</span>
+                                <span class="text-blue-800">{{ search.category_ids | length }} seleccionada(s)</span>
+                            </div>
+                            {% endif %}
+                            {% if search.brand_ids %}
+                            <div class="flex items-start">
+                                <span class="font-medium text-blue-900 w-32">Marcas:</span>
+                                <span class="text-blue-800">{{ search.brand_ids | length }} seleccionada(s)</span>
+                            </div>
+                            {% endif %}
+                            {% if search.size_ids %}
+                            <div class="flex items-start">
+                                <span class="font-medium text-blue-900 w-32">Tallas:</span>
+                                <span class="text-blue-800">{{ search.size_ids | length }} seleccionada(s)</span>
+                            </div>
+                            {% endif %}
+                            {% if search.color_ids %}
+                            <div class="flex items-start">
+                                <span class="font-medium text-blue-900 w-32">Colores:</span>
+                                <span class="text-blue-800">{{ search.color_ids | length }} seleccionada(s)</span>
+                            </div>
+                            {% endif %}
+                            {% if search.material_ids %}
+                            <div class="flex items-start">
+                                <span class="font-medium text-blue-900 w-32">Materiales:</span>
+                                <span class="text-blue-800">{{ search.material_ids | length }} seleccionada(s)</span>
+                            </div>
+                            {% endif %}
+                            {% if search.status_ids %}
+                            <div class="flex items-start">
+                                <span class="font-medium text-blue-900 w-32">Estados:</span>
+                                <span class="text-blue-800">{{ search.status_ids | length }} seleccionada(s)</span>
+                            </div>
+                            {% endif %}
+                            {% if search.platform_ids %}
+                            <div class="flex items-start">
+                                <span class="font-medium text-blue-900 w-32">Plataformas:</span>
+                                <span class="text-blue-800">{{ search.platform_ids | length }} seleccionada(s)</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-blue-200">
+                            <p class="text-xs text-blue-700">
+                                💡 <strong>Nota:</strong> Estos filtros se mantienen automáticamente. Para modificarlos,
+                                vuelve a Vinted, configura tu búsqueda ideal y pega la nueva URL en la pestaña "URL de
+                                Vinted".
+                            </p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {# Filtros avanzados extraídos (ocultos temporalmente) #}
+            {#
+            {% if search and (search.category_ids or search.brand_ids or search.size_ids or search.color_ids or
+            search.material_ids or search.status_ids) %}
+            <div class="space-y-4">
+                <h3 class="text-lg font-semibold text-gray-900 border-b pb-2">
+                    🎯 Filtros Avanzados de Vinted
+                </h3>
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <p class="text-sm text-blue-900 mb-3">
+                        <strong>📌 Filtros extraídos de la URL de Vinted:</strong>
+                    </p>
+                    <div class="space-y-2 text-sm">
+                        {% if search.category_ids %}
+                        <div class="flex items-start">
+                            <span class="font-medium text-blue-900 w-32">Categorías:</span>
+                            <input type="hidden" name="category_ids" value="{{ search.category_ids | tojson }}">
+                            <span class="text-blue-800">{{ search.category_ids | length }} categoría(s)
+                                seleccionada(s)</span>
+                        </div>
+                        {% endif %}
+                        {% if search.brand_ids %}
+                        <div class="flex items-start">
+                            <span class="font-medium text-blue-900 w-32">Marcas:</span>
+                            <input type="hidden" name="brand_ids" value="{{ search.brand_ids | tojson }}">
+                            <span class="text-blue-800">{{ search.brand_ids | length }} marca(s) seleccionada(s)</span>
+                        </div>
+                        {% endif %}
+                        {% if search.size_ids %}
+                        <div class="flex items-start">
+                            <span class="font-medium text-blue-900 w-32">Tallas:</span>
+                            <input type="hidden" name="size_ids" value="{{ search.size_ids | tojson }}">
+                            <span class="text-blue-800">{{ search.size_ids | length }} talla(s) seleccionada(s)</span>
+                        </div>
+                        {% endif %}
+                        {% if search.color_ids %}
+                        <div class="flex items-start">
+                            <span class="font-medium text-blue-900 w-32">Colores:</span>
+                            <input type="hidden" name="color_ids" value="{{ search.color_ids | tojson }}">
+                            <span class="text-blue-800">{{ search.color_ids | length }} color(es) seleccionado(s)</span>
+                        </div>
+                        {% endif %}
+                        {% if search.material_ids %}
+                        <div class="flex items-start">
+                            <span class="font-medium text-blue-900 w-32">Materiales:</span>
+                            <input type="hidden" name="material_ids" value="{{ search.material_ids | tojson }}">
+                            <span class="text-blue-800">{{ search.material_ids | length }} material(es)
+                                seleccionado(s)</span>
+                        </div>
+                        {% endif %}
+                        {% if search.status_ids %}
+                        <div class="flex items-start">
+                            <span class="font-medium text-blue-900 w-32">Estados:</span>
+                            <input type="hidden" name="status_ids" value="{{ search.status_ids | tojson }}">
+                            <span class="text-blue-800">{{ search.status_ids | length }} estado(s)
+                                seleccionado(s)</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-blue-200">
+                        <p class="text-xs text-blue-700">
+                            💡 <strong>Nota:</strong> Estos filtros se mantienen automáticamente. Para modificarlos,
+                            vuelve a Vinted, configura tu búsqueda ideal y pega la nueva URL en la pestaña "URL de
+                            Vinted".
+                        </p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            #}
+
+            <!-- Configuración de ejecución -->
+            <div class="space-y-4">
+                <h3 class="text-lg font-semibold text-gray-900 border-b pb-2">Configuración</h3>
+
+                <!-- Intervalo -->
+                <div>
+                    <label for="interval_minutes" class="block text-sm font-medium text-gray-700 mb-1">
+                        Intervalo de ejecución <span class="text-red-500">*</span>
+                    </label>
+                    <select id="interval_minutes" name="interval_minutes" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="1" {% if search and search.interval_minutes==1 %}selected{% endif %}>⚡ 1 minuto
+                            (productos muy demandados)</option>
+                        <option value="2" {% if search and search.interval_minutes==2 %}selected{% endif %}>⚡ 2 minutos
+                        </option>
+                        <option value="5" {% if search and search.interval_minutes==5 %}selected{% elif not search
+                            %}selected{% endif %}>🔥 5 minutos (recomendado)</option>
+                        <option value="10" {% if search and search.interval_minutes==10 %}selected{% endif %}>⏱️ 10
+                            minutos
+                        </option>
+                        <option value="15" {% if search and search.interval_minutes==15 %}selected{% endif %}>⏱️ 15
+                            minutos
+                        </option>
+                        <option value="30" {% if search and search.interval_minutes==30 %}selected{% endif %}>⏰ 30
+                            minutos
+                        </option>
+                        <option value="60" {% if search and search.interval_minutes==60 %}selected{% endif %}>🕐 1 hora
+                        </option>
+                        <option value="180" {% if search and search.interval_minutes==180 %}selected{% endif %}>🕐 3
+                            horas
+                        </option>
+                        <option value="360" {% if search and search.interval_minutes==360 %}selected{% endif %}>🕐 6
+                            horas
+                        </option>
+                        <option value="720" {% if search and search.interval_minutes==720 %}selected{% endif %}>🕐 12
+                            horas
+                        </option>
+                        <option value="1440" {% if search and search.interval_minutes==1440 %}selected{% endif %}>📅 24
+                            horas</option>
+                    </select>
+                    <p class="mt-1 text-xs text-gray-500">
+                        💡 Para chollos rápidos: 1-5 min. Para productos nicho: 1+ hora
+                    </p>
+                </div>
+
+                <!-- Estado activo -->
+                <div class="flex items-center">
+                    <input type="checkbox" id="is_active" x-model="isActive"
+                        class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                    <label for="is_active" class="ml-2 block text-sm text-gray-700">
+                        Activar búsqueda inmediatamente
+                    </label>
+                </div>
+            </div>
+
+            <!-- Consejo rápido -->
+            <div class="bg-blue-50 border-l-4 border-blue-400 p-4">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <span class="text-2xl">💡</span>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-blue-700">
+                            <strong>Consejo:</strong> Cuanto más específico seas con las palabras clave y el precio,
+                            mejores resultados obtendrás. ¡No olvides activar la búsqueda!
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botones de acción (sticky bottom) -->
+            <div class="sticky bottom-0 bg-white border-t border-gray-200 -mx-6 -mb-6 px-6 py-4 flex space-x-3">
+                <button type="submit"
+                    class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+                    {% if search %}💾 Guardar cambios{% else %}✅ Crear búsqueda{% endif %}
+                </button>
+                <button type="button" onclick="closeModal()"
+                    class="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium transition-colors">
+                    Cancelar
+                </button>
+            </div>
+        </form>
+</div>

@@ -1,0 +1,442 @@
+{% extends "base.html" %}
+
+{% block title %}Configuración - Vinted Scraper{% endblock %}
+
+{% block content %}
+<!-- Mensaje de éxito (se insertará aquí con HTMX) -->
+<div id="message-container"></div>
+
+<div class="bg-white rounded-lg shadow-md overflow-hidden">
+    <!-- Tabs Navigation -->
+    <div class="border-b border-gray-200">
+        <nav class="flex -mb-px overflow-x-auto" aria-label="Tabs">
+            <button onclick="switchTab('notifications')" id="tab-notifications"
+                class="tab-button active whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm">
+                🔔 Notificaciones
+            </button>
+            <button onclick="switchTab('scraping')" id="tab-scraping"
+                class="tab-button whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm">
+                🕷️ Scraping
+            </button>
+            <button onclick="switchTab('filters')" id="tab-filters"
+                class="tab-button whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm">
+                🚫 Filtros
+            </button>
+            <button onclick="switchTab('data')" id="tab-data"
+                class="tab-button whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm">
+                🗄️ Gestión de Datos
+            </button>
+            <button onclick="switchTab('interface')" id="tab-interface"
+                class="tab-button whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm">
+                🎨 Interfaz
+            </button>
+        </nav>
+    </div>
+
+    <!-- Form -->
+    <form hx-post="/settings/update" hx-target="#message-container" hx-swap="innerHTML" class="p-6">
+
+        <!-- Tab: Notificaciones -->
+        <div id="content-notifications" class="tab-content">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">🔔 Notificaciones e Integraciones</h2>
+
+            <!-- Push Notifications -->
+            <div class="mb-6">
+                <label class="flex items-center">
+                    <input type="checkbox" name="push_notifications_enabled"
+                        class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                        {{ 'checked' if settings.push_notifications_enabled else '' }}>
+                    <span class="ml-2 text-gray-700 font-medium">Activar notificaciones push</span>
+                </label>
+                <p class="mt-1 text-sm text-gray-500">Recibir notificaciones en el navegador cuando se encuentren nuevos
+                    productos</p>
+            </div>
+
+            <!-- Webhook -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Webhook URL (genérico)</label>
+                <input type="url" name="webhook_url" value="{{ settings.webhook_url or '' }}"
+                    placeholder="https://tu-servidor.com/webhook"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                <p class="mt-1 text-sm text-gray-500">URL para recibir notificaciones HTTP POST con datos de productos
+                    nuevos</p>
+            </div>
+
+            <hr class="my-6">
+
+            <!-- Telegram -->
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">📱 Telegram</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Bot Token</label>
+                    <input type="text" name="telegram_bot_token" value="{{ settings.telegram_bot_token or '' }}"
+                        placeholder="123456:ABC-DEF1234ghIkl..."
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    <p class="mt-1 text-sm text-gray-500">Token del bot de Telegram (@BotFather)</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Chat ID por defecto</label>
+                    <input type="text" name="telegram_chat_id" value="{{ settings.telegram_chat_id or '' }}"
+                        placeholder="-1001234567890"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    <p class="mt-1 text-sm text-gray-500">ID del chat donde enviar mensajes</p>
+                </div>
+            </div>
+
+            <!-- Discord -->
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">💬 Discord</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Webhook URL</label>
+                    <input type="url" name="discord_webhook_url" value="{{ settings.discord_webhook_url or '' }}"
+                        placeholder="https://discord.com/api/webhooks/..."
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    <p class="mt-1 text-sm text-gray-500">Webhook de Discord para notificaciones</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Bot Token (opcional)</label>
+                    <input type="text" name="discord_bot_token" value="{{ settings.discord_bot_token or '' }}"
+                        placeholder="DISCORD BOT TOKEN "
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    <p class="mt-1 text-sm text-gray-500">Token del bot para funcionalidades avanzadas</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Scraping -->
+        <div id="content-scraping" class="tab-content hidden">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">🕷️ Configuración de Scraping</h2>
+
+            <!-- User-Agent List - NUEVO -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    User-Agents (uno por línea)
+                </label>
+                <textarea name="user_agent_list" rows="6"
+                    placeholder="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36...&#10;Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36...&#10;Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36..."
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 font-mono text-xs">{{ settings.user_agent_list or settings.user_agent }}</textarea>
+                <p class="mt-1 text-sm text-gray-500">
+                    Lista de User-Agents para rotar en las peticiones HTTP. Añade uno por línea para mayor variedad.
+                </p>
+            </div>
+
+            <!-- User-Agent Rotation - NUEVO -->
+            <div class="mb-6">
+                <label class="flex items-center">
+                    <input type="checkbox" name="user_agent_rotation"
+                        class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                        {{ 'checked' if settings.user_agent_rotation else '' }}>
+                    <span class="ml-2 text-gray-700 font-medium">
+                        🔄 Rotar User-Agents
+                    </span>
+                </label>
+                <p class="mt-1 text-sm text-gray-500 ml-6">
+                    Si está activado, se rotará entre los User-Agents de la lista en cada petición.
+                    Si está desactivado, se usará siempre el primero.
+                </p>
+            </div>
+
+            <!-- User-Agent Legacy (oculto, mantener para compatibilidad) -->
+            <input type="hidden" name="user_agent" value="{{ settings.user_agent }}">
+
+            <hr class="my-6">
+
+            <!-- Headers JSON -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Headers adicionales (JSON)</label>
+                <textarea name="default_headers" rows="3"
+                    placeholder='{"Accept-Language": "es-ES,es;q=0.9", "Accept": "application/json"}'
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 font-mono text-sm">{{ settings.default_headers|tojson if settings.default_headers else '' }}</textarea>
+                <p class="mt-1 text-sm text-gray-500">Headers HTTP adicionales en formato JSON (opcional)</p>
+            </div>
+
+            <!-- Max Products -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Productos máximos por búsqueda</label>
+                <input type="number" name="max_products_per_search" value="{{ settings.max_products_per_search }}"
+                    min="1" max="1000"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    required>
+                <p class="mt-1 text-sm text-gray-500">Número máximo de productos a guardar en cada ejecución (1-1000)
+                </p>
+            </div>
+
+            <hr class="my-6">
+
+            <!-- Proxies Section -->
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">🔗 Proxies</h3>
+
+            <!-- Enable Proxies -->
+            <div class="mb-6">
+                <label class="flex items-center">
+                    <input type="checkbox" name="proxies_enabled"
+                        class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                        {{ 'checked' if settings.proxies_enabled else '' }}>
+                    <span class="ml-2 text-gray-700 font-medium">Habilitar proxies</span>
+                </label>
+                <p class="mt-1 text-sm text-gray-500">Usar proxies para las peticiones HTTP (recomendado para evitar
+                    bloqueos)</p>
+            </div>
+
+            <!-- Proxy List -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Lista de proxies (uno por línea)</label>
+                <textarea name="proxy_list" rows="5"
+                    placeholder="http://proxy1.com:8080&#10;http://proxy2.com:8080&#10;socks5://user:pass@proxy3.com:1080"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 font-mono text-sm">{{ settings.proxy_list or '' }}</textarea>
+                <p class="mt-1 text-sm text-gray-500">
+                    Formatos soportados: http://proxy:port, https://proxy:port, socks5://user:pass@proxy:port
+                </p>
+            </div>
+
+            <!-- Proxy Rotation -->
+            <div class="mb-6">
+                <label class="flex items-center">
+                    <input type="checkbox" name="proxy_rotation"
+                        class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                        {{ 'checked' if settings.proxy_rotation else '' }}>
+                    <span class="ml-2 text-gray-700 font-medium">🔄 Rotar proxies</span>
+                </label>
+                <p class="mt-1 text-sm text-gray-500 ml-6">
+                    Si está activado, se rotará entre los proxies de la lista en cada petición.
+                    Si está desactivado, se usará siempre el primero.
+                </p>
+            </div>
+        </div>
+
+
+        <!-- Tab: Filtros -->
+        <div id="content-filters" class="tab-content hidden">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">🚫 Filtros Globales</h2>
+            <p class="text-gray-600 mb-6">Estos filtros se aplicarán a TODAS las búsquedas de forma automática</p>
+
+            <!-- Palabras prohibidas -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Palabras prohibidas en
+                    título/descripción</label>
+                <textarea name="global_banned_words" rows="4"
+                    placeholder="roto&#10;manchado&#10;defecto&#10;intercambio"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">{{ settings.global_banned_words or '' }}</textarea>
+                <p class="mt-1 text-sm text-gray-500">Una palabra por línea. Los productos que contengan estas palabras
+                    serán rechazados automáticamente</p>
+            </div>
+
+            <!-- Precio mínimo -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Precio mínimo global (€)</label>
+                <input type="number" name="global_min_price" value="{{ settings.global_min_price }}" min="0" step="0.01"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                <p class="mt-1 text-sm text-gray-500">Productos más baratos que este precio serán ignorados (útil para
+                    filtrar spam). 0 = desactivado</p>
+            </div>
+
+            <!-- Vendedores bloqueados -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Vendedores bloqueados</label>
+                <textarea name="global_banned_sellers" rows="4"
+                    placeholder="12345678&#10;vendedor_spam&#10;otro_vendedor"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">{{ settings.global_banned_sellers or '' }}</textarea>
+                <p class="mt-1 text-sm text-gray-500">IDs o nombres de vendedores a bloquear (uno por línea). Todos los
+                    productos de estos vendedores serán rechazados</p>
+            </div>
+        </div>
+
+        <!-- Tab: Gestión de Datos -->
+        <div id="content-data" class="tab-content hidden">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">🗄️ Gestión de Datos</h2>
+
+            <!-- Auto-eliminar productos -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Auto-eliminar productos antiguos
+                    (días)</label>
+                <input type="number" name="auto_delete_products_days" value="{{ settings.auto_delete_products_days }}"
+                    min="0"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                <p class="mt-1 text-sm text-gray-500">Eliminar automáticamente productos más antiguos de X días. 0 =
+                    desactivado</p>
+            </div>
+
+            <!-- Auto-marcar notificados -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Auto-marcar como notificados (horas)</label>
+                <input type="number" name="auto_mark_notified_hours" value="{{ settings.auto_mark_notified_hours }}"
+                    min="0"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                <p class="mt-1 text-sm text-gray-500">Marcar productos como notificados después de X horas. 0 =
+                    desactivado</p>
+            </div>
+
+            <!-- Límite de productos -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Límite máximo de productos en base de
+                    datos</label>
+                <input type="number" name="max_products_in_db" value="{{ settings.max_products_in_db }}" min="0"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                <p class="mt-1 text-sm text-gray-500">Cuando se alcance este límite, se eliminarán los productos más
+                    antiguos. 0 = sin límite</p>
+            </div>
+        </div>
+
+        <!-- Tab: Interfaz -->
+        <div id="content-interface" class="tab-content hidden">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">🎨 Preferencias de Interfaz</h2>
+
+            <!-- Tema -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Tema</label>
+                <select name="theme"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    <option value="light" {{ 'selected' if settings.theme=='light' else '' }}>☀️ Claro</option>
+                    <option value="dark" {{ 'selected' if settings.theme=='dark' else '' }}>🌙 Oscuro</option>
+                </select>
+            </div>
+
+            <!-- Idioma -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Idioma</label>
+                <select name="language"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    <option value="es" {{ 'selected' if settings.language=='es' else '' }}>🇪🇸 Español</option>
+                    <option value="en" {{ 'selected' if settings.language=='en' else '' }}>🇬🇧 English</option>
+                    <option value="fr" {{ 'selected' if settings.language=='fr' else '' }}>🇫🇷 Français</option>
+                    <option value="it" {{ 'selected' if settings.language=='it' else '' }}>🇮🇹 Italiano</option>
+                    <option value="pt" {{ 'selected' if settings.language=='pt' else '' }}>🇵🇹 Português</option>
+                </select>
+            </div>
+
+            <!-- Moneda -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Moneda preferida</label>
+                <select name="currency"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    <option value="EUR" {{ 'selected' if settings.currency=='EUR' else '' }}>€ EUR (Euro)</option>
+                    <option value="USD" {{ 'selected' if settings.currency=='USD' else '' }}>$ USD (Dólar)</option>
+                    <option value="GBP" {{ 'selected' if settings.currency=='GBP' else '' }}>£ GBP (Libra)</option>
+                </select>
+            </div>
+
+            <!-- Dominio Vinted -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Dominio de Vinted</label>
+                <select name="vinted_domain"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    <option value="vinted.es" {{ 'selected' if settings.vinted_domain=='vinted.es' else '' }}>🇪🇸
+                        España (vinted.es)</option>
+                    <option value="vinted.fr" {{ 'selected' if settings.vinted_domain=='vinted.fr' else '' }}>🇫🇷
+                        Francia (vinted.fr)</option>
+                    <option value="vinted.it" {{ 'selected' if settings.vinted_domain=='vinted.it' else '' }}>🇮🇹
+                        Italia (vinted.it)</option>
+                    <option value="vinted.com" {{ 'selected' if settings.vinted_domain=='vinted.com' else '' }}>🌍
+                        Internacional (vinted.com)</option>
+                    <option value="vinted.de" {{ 'selected' if settings.vinted_domain=='vinted.de' else '' }}>🇩🇪
+                        Alemania (vinted.de)</option>
+                    <option value="vinted.at" {{ 'selected' if settings.vinted_domain=='vinted.at' else '' }}>🇦🇹
+                        Austria (vinted.at)</option>
+                    <option value="vinted.be" {{ 'selected' if settings.vinted_domain=='vinted.be' else '' }}>🇧🇪
+                        Bélgica (vinted.be)</option>
+                    <option value="vinted.nl" {{ 'selected' if settings.vinted_domain=='vinted.nl' else '' }}>🇳🇱
+                        Países Bajos (vinted.nl)</option>
+                    <option value="vinted.pl" {{ 'selected' if settings.vinted_domain=='vinted.pl' else '' }}>🇵🇱
+                        Polonia (vinted.pl)</option>
+                    <option value="vinted.cz" {{ 'selected' if settings.vinted_domain=='vinted.cz' else '' }}>🇨🇿
+                        República Checa (vinted.cz)</option>
+                    <option value="vinted.lt" {{ 'selected' if settings.vinted_domain=='vinted.lt' else '' }}>🇱🇹
+                        Lituania (vinted.lt)</option>
+                    <option value="vinted.lu" {{ 'selected' if settings.vinted_domain=='vinted.lu' else '' }}>🇱🇺
+                        Luxemburgo (vinted.lu)</option>
+                    <option value="vinted.pt" {{ 'selected' if settings.vinted_domain=='vinted.pt' else '' }}>🇵🇹
+                        Portugal (vinted.pt)</option>
+                    <option value="vinted.se" {{ 'selected' if settings.vinted_domain=='vinted.se' else '' }}>🇸🇪
+                        Suecia (vinted.se)</option>
+                    <option value="vinted.dk" {{ 'selected' if settings.vinted_domain=='vinted.dk' else '' }}>🇩🇰
+                        Dinamarca (vinted.dk)</option>
+                    <option value="vinted.sk" {{ 'selected' if settings.vinted_domain=='vinted.sk' else '' }}>🇸🇰
+                        Eslovaquia (vinted.sk)</option>
+                    <option value="vinted.ro" {{ 'selected' if settings.vinted_domain=='vinted.ro' else '' }}>🇷🇴
+                        Rumania (vinted.ro)</option>
+                </select>
+                <p class="mt-1 text-sm text-gray-500">Los enlaces a productos se generarán con este dominio</p>
+            </div>
+        </div>
+
+        <!-- Botones de acción -->
+        <div class="mt-8 flex justify-between items-center pt-6 border-t border-gray-200">
+            <button type="button" hx-post="/settings/reset"
+                hx-confirm="¿Estás seguro de restablecer la configuración? Se perderán todos los cambios."
+                hx-target="#message-container"
+                class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors">
+                🔄 Restablecer valores por defecto
+            </button>
+
+            <button type="submit"
+                class="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors">
+                💾 Guardar configuración
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Info adicional -->
+<div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+    <div class="flex">
+        <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
+                fill="currentColor">
+                <path fill-rule="evenodd"
+                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                    clip-rule="evenodd" />
+            </svg>
+        </div>
+        <div class="ml-3">
+            <p class="text-sm text-blue-700">
+                <strong>Última actualización:</strong> {{ settings.updated_at.strftime('%d/%m/%Y %H:%M:%S') if
+                settings.updated_at else 'No disponible' }}
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Sistema de pestañas
+    function switchTab(tabName) {
+        // Ocultar todos los contenidos
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.add('hidden');
+        });
+
+        // Desactivar todos los botones
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.classList.remove('active', 'border-blue-500', 'text-blue-600');
+            button.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+        });
+
+        // Mostrar contenido seleccionado
+        document.getElementById('content-' + tabName).classList.remove('hidden');
+
+        // Activar botón seleccionado
+        const activeButton = document.getElementById('tab-' + tabName);
+        activeButton.classList.add('active', 'border-blue-500', 'text-blue-600');
+        activeButton.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+    }
+
+    // Inicializar estilos de pestañas
+    document.querySelectorAll('.tab-button').forEach(button => {
+        if (!button.classList.contains('active')) {
+            button.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+        } else {
+            button.classList.add('border-blue-500', 'text-blue-600');
+        }
+    });
+
+    // Auto-ocultar mensajes después de 5 segundos
+    document.body.addEventListener('htmx:afterSwap', function (evt) {
+        if (evt.detail.target.id === 'message-container') {
+            setTimeout(() => {
+                evt.detail.target.innerHTML = '';
+            }, 5000);
+        }
+    });
+</script>
+{% endblock %}

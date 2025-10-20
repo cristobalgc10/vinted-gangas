@@ -1,0 +1,84 @@
+{# Componente: Fila de producto (vista lista) #}
+{# Uso: {% include "_product_row.html" %} #}
+
+<div id="product-{{ product.id }}" class="flex items-center py-4 px-4 hover:bg-gray-50 transition group">
+    <!-- Imagen -->
+    <img src="{{ product.image_url or '/static/img/placeholder.png' }}" alt="{{ product.title }}"
+        class="w-20 h-20 object-cover rounded mr-4 border border-gray-200">
+
+    <!-- Información del producto -->
+    <div class="flex-1 min-w-0">
+        <!-- Título y badges -->
+        <div class="flex items-center gap-2 flex-wrap">
+            <a href="{{ product.url }}" target="_blank" class="font-semibold text-gray-900 hover:text-blue-600 truncate"
+                title="{{ product.title }}">
+                {{ product.title }}
+            </a>
+
+            {% if not product.is_notified %}
+            <span
+                class="bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-base font-bold px-1.5 py-0.5 rounded-full shadow"
+                title="Nuevo">
+                ✨
+            </span>
+            {% endif %}
+
+            {# Badge de búsqueda #}
+            {% if product.search and product.search.name %}
+            <span class="bg-purple-500 text-white text-xs font-semibold px-2 py-1 rounded"
+                title="{{ product.search.name }}">
+                🔍 {{ product.search.name }}
+            </span>
+            {% endif %}
+
+            {# Badge FAV - siempre presente pero oculto si no es favorito #}
+            <span id="fav-badge-{{ product.id }}"
+                class="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded {% if not product.is_favorite %}hidden{% endif %}">
+                ❤️ FAV
+            </span>
+        </div>
+
+        <!-- Detalles principales -->
+        <div class="flex items-center gap-4 mt-1 text-sm text-gray-600">
+            <span>💶 {{ product.price }}€</span>
+            {% if product.size %}<span>📏 {{ product.size }}</span>{% endif %}
+            {% if product.brand %}<span>🏷️ {{ product.brand }}</span>{% endif %}
+            {% if product.condition %}<span title="{{ product.condition }}">{{ product.condition }}</span>{% endif %}
+        </div>
+
+        <!-- Información del vendedor -->
+        <div class="flex items-center gap-2 text-xs text-gray-500 mt-1">
+            {% if product.seller and product.seller.login %}
+            <span class="font-medium text-gray-800">👤 {{ product.seller.login }}</span>
+            {% if product.seller.feedback_reputation is not none %}
+            ⭐ {{ (product.seller.feedback_reputation * 100) | round(1) }}%
+            {% endif %}
+            {% if product.seller.feedback_count is not none %}
+            🗳️ {{ product.seller.feedback_count }}
+            {% endif %}
+            {% if product.seller.country_code %}
+            <span title="{{ product.seller.country_title }}">{{ product.seller.country_code | country_flag }}</span>
+            {% endif %}
+            {% endif %}
+        </div>
+
+        <!-- Fecha de descubrimiento -->
+        <span class="text-xs text-gray-400 mt-1 block">
+            🔍 {{ product.found_at.strftime('%d/%m/%Y %H:%M:%S') }}
+        </span>
+    </div>
+
+    <!-- Botones de acción -->
+    <div class="flex flex-col items-end ml-4 gap-2">
+        <a href="{{ product.url }}" target="_blank"
+            class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs font-medium transition-colors">
+            Ver
+        </a>
+        <button id="fav-btn-{{ product.id }}" hx-post="/api/products/{{ product.id }}/favorite" hx-swap="none"
+            hx-on::after-request="updateFavoriteState({{ product.id }}, event.detail.xhr.response)"
+            class="px-3 py-1 rounded text-xs transition-colors font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 {% if product.is_favorite %}bg-red-500 hover:bg-red-600 text-white{% else %}bg-gray-200 hover:bg-gray-300 text-gray-700{% endif %}"
+            title="{% if product.is_favorite %}Quitar de favoritos{% else %}Añadir a favoritos{% endif %}">
+            {% if product.is_favorite %}❤️{% else %}🤍{% endif %}
+        </button>
+    </div>
+</div>

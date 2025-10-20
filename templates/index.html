@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Vinted Scraper{% endblock %}
+
+{% block content %}
+<div>
+    <!-- Título de la página -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">Dashboard</h1>
+        <p class="mt-2 text-gray-600">Resumen de tu actividad de scraping</p>
+    </div>
+
+    <!-- Tarjetas de estadísticas -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Total de búsquedas -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <span class="text-3xl">🔍</span>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500">Búsquedas totales</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ stats.total_searches }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Búsquedas activas -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <span class="text-3xl">✅</span>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500">Búsquedas activas</p>
+                    <p class="text-2xl font-bold text-green-600">{{ stats.active_searches }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total de productos -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <span class="text-3xl">📦</span>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500">Productos encontrados</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ stats.total_products }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Productos nuevos -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <span class="text-3xl">🆕</span>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500">Productos nuevos</p>
+                    <p class="text-2xl font-bold text-blue-600">{{ stats.new_products }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grid de dos columnas para búsquedas y productos recientes -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Búsquedas recientes -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="p-6 border-b border-gray-200">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-xl font-semibold text-gray-900">Búsquedas recientes</h2>
+                    <a href="/searches" class="text-sm text-blue-500 hover:text-blue-600">Ver todas →</a>
+                </div>
+            </div>
+            <div class="p-6">
+                {% if searches %}
+                <div class="space-y-4">
+                    {% for search in searches %}
+                    <div
+                        class="border-l-4 {% if search.is_active %}border-green-500{% else %}border-gray-300{% endif %} pl-4 py-2">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-gray-900">{{ search.name }}</h3>
+                                {% if search.query %}
+                                <p class="text-sm text-gray-600 mt-1">{{ search.query }}</p>
+                                {% endif %}
+                                <div class="flex items-center space-x-4 mt-2 text-xs text-gray-500">
+                                    {% if search.price_from or search.price_to %}
+                                    <span>💰
+                                        {% if search.price_from %}{{ search.price_from }}€{% else %}0€{% endif %} -
+                                        {% if search.price_to %}{{ search.price_to }}€{% else %}∞{% endif %}
+                                    </span>
+                                    {% endif %}
+                                    <span>⏱️ Cada {{ search.interval_minutes }} min</span>
+                                    <span>{% if search.is_active %}🟢 Activa{% else %}⚫ Pausada{% endif %}</span>
+                                    {% if search.last_run_at %}
+                                    <span>🕒 {{ search.last_run_at.strftime('%d/%m/%Y %H:%M:%S') }}</span>
+                                    {% endif %}
+                                    <span>📦 {{ search.products_count or 0 }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-8 text-gray-500">
+                    <p class="text-xl mb-2">📭</p>
+                    <p>No hay búsquedas todavía</p>
+                    <a href="/searches/new" class="text-blue-500 hover:text-blue-600 text-sm mt-2 inline-block">
+                        Crear tu primera búsqueda
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Productos recientes -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="p-6 border-b border-gray-200">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-xl font-semibold text-gray-900">Productos recientes</h2>
+                    <a href="/products" class="text-sm text-blue-500 hover:text-blue-600">Ver todos →</a>
+                </div>
+            </div>
+            <div class="p-6">
+                {% if products %}
+                <div class="space-y-4">
+                    {% for product in products[:5] %}
+                    <div class="flex space-x-4 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                        <!-- Imagen del producto -->
+                        <div class="flex-shrink-0">
+                            {% if product.image_url %}
+                            <img src="{{ product.image_url }}" alt="{{ product.title }}"
+                                class="w-16 h-16 rounded object-cover">
+                            {% else %}
+                            <div class="w-16 h-16 bg-gray-200 rounded flex items-center justify-center">
+                                <span class="text-2xl">👕</span>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Info del producto -->
+                        <div class="flex-1 min-w-0">
+                            <a href="{{ product.url }}" target="_blank"
+                                class="font-medium text-gray-900 hover:text-blue-600 line-clamp-2">
+                                {{ product.title }}
+                            </a>
+                            <div class="flex items-center space-x-3 mt-1">
+                                <span class="text-lg font-bold text-green-600">{{ product.price }}€</span>
+                                {% if product.seller_country %}
+                                <span class="text-xs text-gray-500">📍 {{ product.seller_country }}</span>
+                                {% endif %}
+                                {% if not product.is_notified %}
+                                <span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">Nuevo</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-8 text-gray-500">
+                    <p class="text-xl mb-2">📦</p>
+                    <p>No hay productos encontrados todavía</p>
+                    <p class="text-sm mt-2">Los productos aparecerán cuando ejecutes tus búsquedas</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Sección de acciones rápidas -->
+    <div class="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">🚀 Primeros pasos</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <button onclick="openModal('/searches/new?modal=1')"
+                class="block p-4 bg-white rounded-lg hover:shadow-md transition-shadow text-left">
+                <div class="text-2xl mb-2">➕</div>
+                <h4 class="font-semibold text-gray-900">Crear búsqueda</h4>
+                <p class="text-sm text-gray-600 mt-1">Define qué productos quieres encontrar</p>
+            </button>
+
+            <a href="/docs" target="_blank" class="block p-4 bg-white rounded-lg hover:shadow-md transition-shadow">
+                <div class="text-2xl mb-2">📚</div>
+                <h4 class="font-semibold text-gray-900">Ver API</h4>
+                <p class="text-sm text-gray-600 mt-1">Documentación completa de la API</p>
+            </a>
+
+            <a href="/help" class="block p-4 bg-white rounded-lg hover:shadow-md transition-shadow">
+                <div class="text-2xl mb-2">❓</div>
+                <h4 class="font-semibold text-gray-900">Ayuda</h4>
+                <p class="text-sm text-gray-600 mt-1">Aprende cómo usar la aplicación</p>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

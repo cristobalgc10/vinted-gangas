@@ -1,0 +1,20 @@
+{# Fragmento: Lista de búsquedas (para HTMX) #}
+{# Endpoint: /searches/render #}
+
+{% if not searches %}
+<div class="bg-white rounded-lg shadow-sm p-12 text-center">
+    <div class="text-6xl mb-4">🔍</div>
+    <h3 class="text-xl font-semibold text-gray-900 mb-2">No tienes búsquedas todavía</h3>
+    <p class="text-gray-600 mb-6">Crea tu primera búsqueda para empezar a encontrar productos en Vinted</p>
+    <button onclick="openModal('/searches/new?modal=1')" 
+            class="inline-block bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg font-medium transition-colors">
+        Crear mi primera búsqueda
+    </button>
+</div>
+{% else %}
+<div class="space-y-4">
+    {% for search in searches %}
+        {% include "_search_card.html" %}
+    {% endfor %}
+</div>
+{% endif %}

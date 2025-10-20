@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Búsquedas - Vinted Scraper{% endblock %}
+
+{% block content %}
+<div>
+    <!-- Cabecera -->
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Mis Búsquedas</h1>
+            <p class="mt-2 text-gray-600">Gestiona tus búsquedas automatizadas</p>
+        </div>
+        <button onclick="openModal('/searches/new?modal=1')"
+                class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+            + Nueva Búsqueda
+        </button>
+    </div>
+
+    <!-- Lista de búsquedas (usa el fragmento reutilizable) -->
+    <div id="searches-list">
+        {% include "_searches_list.html" %}
+    </div>
+</div>
+{% endblock %}

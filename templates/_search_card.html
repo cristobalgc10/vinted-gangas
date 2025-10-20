@@ -1,0 +1,150 @@
+{# Componente: Tarjeta de búsqueda individual #}
+{# Uso: {% include "_search_card.html" with {"search": search} %} #}
+
+<div class="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-6">
+    <div class="flex justify-between items-start">
+        <!-- Información de la búsqueda -->
+        <div class="flex-1">
+            <div class="flex items-center space-x-3">
+                <h3 class="text-xl font-semibold text-gray-900">{{ search.name }}</h3>
+                {% if search.is_active %}
+                <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded">Activa</span>
+                {% else %}
+                <span class="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded">Pausada</span>
+                {% endif %}
+            </div>
+
+            {% if search.vinted_query_string %}
+            <p class="text-blue-700 mt-2 text-xs">
+                <span class="font-medium">Modo:</span> 
+                <span class="inline-block bg-blue-50 text-blue-700 px-2 py-0.5 rounded">URL de Vinted</span>
+                <span class="ml-2 font-mono text-gray-500">?{{ search.vinted_query_string|truncate(60, True, '...') }}</span>
+            </p>
+            {% elif search.query %}
+            <p class="text-gray-600 mt-2">
+                <span class="font-medium">Búsqueda:</span> "{{ search.query }}"
+            </p>
+            {% endif %}
+
+            <!-- Detalles de la búsqueda -->
+            <div class="flex flex-wrap gap-4 mt-4 text-sm text-gray-600">
+                {% if search.price_from or search.price_to %}
+                <div class="flex items-center space-x-1">
+                    <span>💰</span>
+                    <span>
+                        {% if search.price_from %}{{ search.price_from }}€{% else %}0€{% endif %} -
+                        {% if search.price_to %}{{ search.price_to }}€{% else %}∞{% endif %}
+                    </span>
+                </div>
+                {% endif %}
+
+                <div class="flex items-center space-x-1">
+                    <span>⏱️</span>
+                    <span>Cada {{ search.interval_minutes }} minutos</span>
+                </div>
+
+                <div class="flex items-center space-x-1">
+                    <span>📦</span>
+                    <span>{{ search.products|length }} productos encontrados</span>
+                </div>
+
+                {% if search.last_run_at %}
+                <div class="flex items-center space-x-1">
+                    <span>🕐</span>
+                    <span>Última ejecución: {{ search.last_run_at.strftime('%d/%m/%Y %H:%M') }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if search.vinted_query_string and (search.category_ids or search.brand_ids or search.size_ids or search.color_ids or search.material_ids or search.status_ids or search.platform_ids) %}
+            <div class="mt-2">
+                <span class="text-xs text-blue-700 font-medium">Filtros extraídos:</span>
+                <span class="text-xs text-blue-900">
+                    {% if search.category_ids %}Categorías: {{ search.category_ids|length }} {% endif %}
+                    {% if search.brand_ids %}· Marcas: {{ search.brand_ids|length }} {% endif %}
+                    {% if search.size_ids %}· Tallas: {{ search.size_ids|length }} {% endif %}
+                    {% if search.color_ids %}· Colores: {{ search.color_ids|length }} {% endif %}
+                    {% if search.material_ids %}· Materiales: {{ search.material_ids|length }} {% endif %}
+                    {% if search.status_ids %}· Estados: {{ search.status_ids|length }} {% endif %}
+                    {% if search.platform_ids %}· Plataformas: {{ search.platform_ids|length }} {% endif %}
+                </span>
+            </div>
+            {% endif %}
+
+            <!-- Filtros adicionales -->
+            {% if search.allowed_countries or search.banned_words %}
+            <div class="mt-3 pt-3 border-t border-gray-200">
+                <p class="text-xs font-medium text-gray-500 mb-2">FILTROS PERSONALIZADOS:</p>
+                <div class="flex flex-wrap gap-2">
+                    {% if search.allowed_countries %}
+                    <div class="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded">
+                        🌍 Países: {{ search.allowed_countries|join(', ') }}
+                    </div>
+                    {% endif %}
+                    {% if search.banned_words %}
+                    <div class="text-xs bg-red-50 text-red-700 px-2 py-1 rounded">
+                        🚫 Palabras baneadas: {{ search.banned_words|length }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Acciones -->
+        <div class="flex flex-col space-y-2 ml-6">
+            <!-- Toggle Activo/Pausado con HTMX -->
+            <button hx-post="/api/searches/{{ search.id }}/toggle" 
+                    hx-swap="none"
+                    hx-on::after-request="window.location.reload()"
+                    class="px-4 py-2 rounded {% if search.is_active %}bg-yellow-500 hover:bg-yellow-600 text-white{% else %}bg-green-500 hover:bg-green-600 text-white{% endif %} transition-colors text-sm font-medium">
+                {% if search.is_active %}⏸️ Pausar{% else %}▶️ Activar{% endif %}
+            </button>
+
+            <!-- Ejecutar ahora -->
+            <button hx-post="/api/searches/{{ search.id }}/run" 
+                    hx-swap="none"
+                    hx-indicator="#spinner-{{ search.id }}" 
+                    hx-on::after-request="
+                        if (event.detail.successful) {
+                            const response = JSON.parse(event.detail.xhr.response);
+                            showToast(response.message, 'success');
+                            setTimeout(() => window.location.reload(), 1000);
+                        } else {
+                            showToast('Error al ejecutar búsqueda', 'error');
+                        }
+                    "
+                    class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors text-sm font-medium relative disabled:opacity-50 disabled:cursor-not-allowed">
+                🔄 Ejecutar
+                <span id="spinner-{{ search.id }}"
+                      class="htmx-indicator absolute inset-0 flex items-center justify-center bg-blue-600 rounded">
+                    <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </span>
+            </button>
+
+            <!-- Editar (abre modal) -->
+            <button onclick="openModal('/searches/{{ search.id }}/edit?modal=1')"
+                    class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition-colors text-sm font-medium text-center">
+                ✏️ Editar
+            </button>
+
+            <!-- Ver productos -->
+            <a href="/products?search_id={{ search.id }}"
+               class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition-colors text-sm font-medium text-center">
+                📦 Productos
+            </a>
+
+            <!-- Eliminar (con confirmación) -->
+            <button hx-delete="/api/searches/{{ search.id }}"
+                    hx-confirm="¿Estás seguro de eliminar '{{ search.name }}'? Se eliminarán también todos los productos encontrados."
+                    hx-swap="none" 
+                    hx-on::after-request="window.location.reload()"
+                    class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded transition-colors text-sm font-medium">
+                🗑️ Eliminar
+            </button>
+        </div>
+    </div>
+</div>

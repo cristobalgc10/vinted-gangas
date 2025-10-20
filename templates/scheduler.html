@@ -1,0 +1,470 @@
+{% extends "base.html" %}
+
+{% block title %}Scheduler - Vinted Scraper{% endblock %}
+
+{% block content %}
+<div x-data="schedulerDashboard()">
+    <!-- Título -->
+    <div class="mb-8 flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">📅 Scheduler</h1>
+            <p class="mt-2 text-gray-600">Monitoreo de tareas programadas</p>
+        </div>
+        <div class="flex space-x-3">
+            <button @click="refresh()"
+                class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2">
+                <span>🔄</span>
+                <span>Actualizar</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ⭐ TARJETAS DE ESTADO DEL SCHEDULER -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Estado -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <span class="text-3xl" x-text="status.running ? '✅' : '⏸️'"></span>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500">Estado</p>
+                    <p class="text-2xl font-bold" :class="status.running ? 'text-green-600' : 'text-gray-600'"
+                        x-text="status.running ? 'Activo' : 'Detenido'"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Jobs totales -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <span class="text-3xl">⚙️</span>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500">Jobs totales</p>
+                    <p class="text-2xl font-bold text-gray-900" x-text="status.jobs_count"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Búsquedas activas -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <span class="text-3xl">🔍</span>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500">Búsquedas activas</p>
+                    <p class="text-2xl font-bold text-blue-600" x-text="status.active_searches"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tasa de éxito -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <span class="text-3xl">📊</span>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500">Tasa de éxito</p>
+                    <p class="text-2xl font-bold text-green-600" x-text="schedulerStats.success_rate + '%'"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ⭐ ESTADÍSTICAS DEL SCHEDULER -->
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">📊 Estadísticas generales</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div>
+                <p class="text-sm text-gray-500">Ejecuciones totales</p>
+                <p class="text-2xl font-bold text-gray-900" x-text="schedulerStats.total_executions"></p>
+            </div>
+            <div>
+                <p class="text-sm text-gray-500">Exitosas</p>
+                <p class="text-2xl font-bold text-green-600" x-text="schedulerStats.successful_executions"></p>
+            </div>
+            <div>
+                <p class="text-sm text-gray-500">Fallidas</p>
+                <p class="text-2xl font-bold text-red-600" x-text="schedulerStats.failed_executions"></p>
+            </div>
+            <div>
+                <p class="text-sm text-gray-500">Últimas 24h</p>
+                <p class="text-2xl font-bold text-blue-600" x-text="schedulerStats.last_24h_executions"></p>
+            </div>
+        </div>
+
+        <div class="mt-6 pt-6 border-t border-gray-200">
+            <div class="grid grid-cols-2 gap-6">
+                <div>
+                    <p class="text-sm text-gray-500">Productos encontrados</p>
+                    <p class="text-xl font-bold text-gray-900" x-text="schedulerStats.total_products_found"></p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-500">Productos guardados</p>
+                    <p class="text-xl font-bold text-blue-600" x-text="schedulerStats.total_products_new"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ⭐ PRÓXIMAS EJECUCIONES (MEJORADO) -->
+    <div class="bg-white rounded-lg shadow mb-8">
+        <div class="p-6 border-b border-gray-200">
+            <h2 class="text-xl font-semibold text-gray-900">⏰ Próximas ejecuciones</h2>
+        </div>
+        <div class="p-6">
+            <template x-if="status.next_executions && status.next_executions.length > 0">
+                <div class="space-y-3">
+                    <template x-for="job in status.next_executions" :key="job.job_id">
+                        <div
+                            class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-blue-300 transition-colors">
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-3">
+                                    <p class="font-semibold text-gray-900" x-text="job.name"></p>
+                                    <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded"
+                                        x-text="'ID: ' + job.search_id"></span>
+                                </div>
+                                <div class="flex items-center space-x-4 mt-2 text-sm text-gray-600">
+                                    <span>⏱️ <span x-text="formatNextRun(job.next_run)"></span></span>
+                                    <span>🔁 <span x-text="extractInterval(job.trigger)"></span></span>
+                                    <span>🕒 <span x-text="formatDateTime(job.next_run)"></span></span>
+                                </div>
+                            </div>
+                            <div class="flex space-x-2 ml-4">
+                                <a :href="'/searches'"
+                                    class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium">
+                                    Ver búsquedas
+                                </a>
+                                <button @click="showSearchModal(job.search_id)"
+                                    class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm font-medium">
+                                    Detalles
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </template>
+            <template x-if="!status.next_executions || status.next_executions.length === 0">
+                <div class="text-center py-8 text-gray-500">
+                    <p class="text-xl mb-2">📭</p>
+                    <p>No hay ejecuciones programadas</p>
+                    <a href="/searches" class="text-blue-500 hover:text-blue-600 text-sm mt-2 inline-block">
+                        Crear una búsqueda →
+                    </a>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- ⭐ BÚSQUEDAS CON ERRORES -->
+    <template x-if="schedulerStats.errors_by_search && schedulerStats.errors_by_search.length > 0">
+        <div class="bg-red-50 border border-red-200 rounded-lg p-6 mb-8">
+            <h2 class="text-xl font-semibold text-red-900 mb-4">🚨 Búsquedas con errores</h2>
+            <div class="space-y-3">
+                <template x-for="error in schedulerStats.errors_by_search" :key="error.search_id">
+                    <div class="flex items-center justify-between p-4 bg-white rounded-lg border border-red-300">
+                        <div class="flex-1">
+                            <p class="font-semibold text-gray-900" x-text="error.search_name"></p>
+                            <p class="text-sm text-red-600 mt-1">
+                                <span>❌ Errores totales:</span> <span x-text="error.total_errors"></span>
+                                <span class="ml-4">🔄 Consecutivos:</span> <span
+                                    x-text="error.consecutive_errors"></span>
+                            </p>
+                        </div>
+                        <a :href="'/searches'"
+                            class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                            Revisar en búsquedas
+                        </a>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </template>
+
+    <!-- ⭐ LOGS RECIENTES DEL SCHEDULER (MEJORADO CON PAGINACIÓN) -->
+    <div class="bg-white rounded-lg shadow">
+        <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+            <h2 class="text-xl font-semibold text-gray-900">📝 Logs recientes</h2>
+            <div class="flex space-x-2">
+                <button @click="filterStatus = 'all'; currentPage = 1"
+                    :class="filterStatus === 'all' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'"
+                    class="px-3 py-1 rounded text-sm font-medium">
+                    Todos
+                </button>
+                <button @click="filterStatus = 'success'; currentPage = 1"
+                    :class="filterStatus === 'success' ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700'"
+                    class="px-3 py-1 rounded text-sm font-medium">
+                    Éxito
+                </button>
+                <button @click="filterStatus = 'error'; currentPage = 1"
+                    :class="filterStatus === 'error' ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'"
+                    class="px-3 py-1 rounded text-sm font-medium">
+                    Error
+                </button>
+            </div>
+        </div>
+        <div class="p-6">
+            <template x-if="paginatedLogs.length > 0">
+                <div>
+                    <div class="space-y-3 mb-4">
+                        <template x-for="log in paginatedLogs" :key="log.id">
+                            <div class="flex items-start justify-between p-4 bg-gray-50 rounded-lg border-l-4" :class="{
+                                    'border-green-500': log.status === 'success',
+                                    'border-red-500': log.status === 'error',
+                                    'border-yellow-500': log.status === 'running'
+                                }">
+                                <div class="flex-1">
+                                    <div class="flex items-center space-x-2">
+                                        <span
+                                            x-text="log.status === 'success' ? '✅' : log.status === 'error' ? '❌' : '⏳'"></span>
+                                        <p class="font-semibold text-gray-900" x-text="log.job_name"></p>
+                                        <span class="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded"
+                                            x-text="log.job_type"></span>
+                                    </div>
+
+                                    <!-- ⭐ INFO BÁSICA -->
+                                    <div class="flex items-center space-x-4 mt-2 text-sm text-gray-600">
+                                        <span>🕒 <span x-text="formatDate(log.started_at)"></span></span>
+                                        <span>⏱️ <span
+                                                x-text="log.duration_ms ? log.duration_ms + 'ms' : 'N/A'"></span></span>
+                                    </div>
+
+                                    <!-- ⭐ MÉTRICAS DE PRODUCTOS (MEJORADO) -->
+                                    <template
+                                        x-if="log.status === 'success' && (log.products_found > 0 || log.products_new > 0)">
+                                        <div class="mt-3 p-3 bg-white rounded border border-gray-200">
+                                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                                                <div>
+                                                    <p class="text-gray-500 text-xs">Encontrados</p>
+                                                    <p class="font-bold text-blue-600" x-text="log.products_found || 0">
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p class="text-gray-500 text-xs">Guardados</p>
+                                                    <p class="font-bold text-green-600" x-text="log.products_new || 0">
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p class="text-gray-500 text-xs">Filtrados</p>
+                                                    <p class="font-bold text-orange-600"
+                                                        x-text="log.products_filtered || 0"></p>
+                                                </div>
+                                                <div>
+                                                    <p class="text-gray-500 text-xs">Notificados</p>
+                                                    <p class="font-bold text-purple-600"
+                                                        x-text="log.products_notified || 0"></p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+
+                                    <!-- ⭐ ERROR MESSAGE -->
+                                    <template x-if="log.error_message">
+                                        <div class="mt-2 p-3 bg-red-50 rounded border border-red-200">
+                                            <p class="text-sm font-medium text-red-900">Error:</p>
+                                            <p class="text-sm text-red-700 mt-1"
+                                                x-text="log.error_message.split('\\n')[0]"></p>
+                                            <template x-if="log.error_count > 0">
+                                                <p class="text-xs text-red-600 mt-1">
+                                                    🔄 Errores consecutivos: <span x-text="log.error_count"></span>
+                                                </p>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- ⭐ PAGINACIÓN -->
+                    <div class="flex items-center justify-between pt-4 border-t border-gray-200">
+                        <p class="text-sm text-gray-600">
+                            Mostrando <span x-text="(currentPage - 1) * logsPerPage + 1"></span> -
+                            <span x-text="Math.min(currentPage * logsPerPage, filteredLogs.length)"></span> de
+                            <span x-text="filteredLogs.length"></span> logs
+                        </p>
+                        <div class="flex space-x-2">
+                            <button @click="prevPage()" :disabled="currentPage === 1"
+                                class="px-3 py-1 rounded text-sm font-medium"
+                                :class="currentPage === 1 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-blue-500 text-white hover:bg-blue-600'">
+                                ← Anterior
+                            </button>
+                            <span class="px-3 py-1 text-sm text-gray-600">
+                                Página <span x-text="currentPage"></span> de <span x-text="totalPages"></span>
+                            </span>
+                            <button @click="nextPage()" :disabled="currentPage === totalPages"
+                                class="px-3 py-1 rounded text-sm font-medium"
+                                :class="currentPage === totalPages ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-blue-500 text-white hover:bg-blue-600'">
+                                Siguiente →
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+            <template x-if="filteredLogs.length === 0">
+                <div class="text-center py-8 text-gray-500">
+                    <p class="text-xl mb-2">📭</p>
+                    <p>No hay logs disponibles</p>
+                </div>
+            </template>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function schedulerDashboard() {
+        return {
+            status: {
+                running: false,
+                jobs_count: 0,
+                active_searches: 0,
+                next_executions: []
+            },
+            schedulerStats: {
+                total_executions: 0,
+                successful_executions: 0,
+                failed_executions: 0,
+                success_rate: 0,
+                total_products_found: 0,
+                total_products_new: 0,
+                last_24h_executions: 0,
+                errors_by_search: []
+            },
+            logs: [],
+            filterStatus: 'all',
+            currentPage: 1,
+            logsPerPage: 10,
+
+            async init() {
+                await this.refresh();
+                // Auto-refresh cada 10 segundos
+                setInterval(() => this.refresh(), 10000);
+            },
+
+            async refresh() {
+                try {
+                    // Cargar estado del scheduler
+                    const statusRes = await fetch('/api/scheduler/status');
+                    this.status = await statusRes.json();
+
+                    // Cargar estadísticas
+                    const statsRes = await fetch('/api/stats/scheduler');
+                    this.schedulerStats = await statsRes.json();
+
+                    // Cargar logs (aumentado a 100 para paginación)
+                    const logsRes = await fetch('/api/scheduler/logs?limit=100');
+                    this.logs = await logsRes.json();
+
+                } catch (error) {
+                    console.error('Error actualizando datos:', error);
+                }
+            },
+
+            get filteredLogs() {
+                if (this.filterStatus === 'all') {
+                    return this.logs;
+                }
+                return this.logs.filter(log => log.status === this.filterStatus);
+            },
+
+            get totalPages() {
+                return Math.ceil(this.filteredLogs.length / this.logsPerPage);
+            },
+
+            get paginatedLogs() {
+                const start = (this.currentPage - 1) * this.logsPerPage;
+                const end = start + this.logsPerPage;
+                return this.filteredLogs.slice(start, end);
+            },
+
+            nextPage() {
+                if (this.currentPage < this.totalPages) {
+                    this.currentPage++;
+                }
+            },
+
+            prevPage() {
+                if (this.currentPage > 1) {
+                    this.currentPage--;
+                }
+            },
+
+            formatDate(dateStr) {
+                const date = new Date(dateStr);
+                return date.toLocaleString('es-ES', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+            },
+
+            formatDateTime(dateStr) {
+                const date = new Date(dateStr);
+                return date.toLocaleString('es-ES', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            },
+
+            formatNextRun(dateStr) {
+                const date = new Date(dateStr);
+                const now = new Date();
+                const diff = date - now;
+
+                if (diff < 0) return 'Ejecutando...';
+
+                const minutes = Math.floor(diff / 60000);
+                const hours = Math.floor(minutes / 60);
+                const days = Math.floor(hours / 24);
+
+                if (days > 0) {
+                    return `En ${days}d ${hours % 24}h`;
+                } else if (hours > 0) {
+                    return `En ${hours}h ${minutes % 60}min`;
+                } else if (minutes > 0) {
+                    return `En ${minutes} minutos`;
+                } else {
+                    return 'Próximamente';
+                }
+            },
+
+            extractInterval(triggerStr) {
+                // Extraer el intervalo del trigger string
+                const match = triggerStr.match(/interval\[(\d+):(\d+):(\d+)\]/);
+                if (match) {
+                    const hours = parseInt(match[1]);
+                    const minutes = parseInt(match[2]);
+
+                    if (hours > 0) {
+                        return `Cada ${hours}h ${minutes}min`;
+                    } else {
+                        return `Cada ${minutes} min`;
+                    }
+                }
+                return 'Intervalo personalizado';
+            },
+
+            showSearchModal(searchId) {
+                // Abrir modal de búsqueda (si tienes implementada la función openModal en base.html)
+                if (typeof openModal === 'function') {
+                    openModal(`/searches/${searchId}/edit?modal=1`);
+                } else {
+                    // Fallback: ir a la página de búsquedas
+                    window.location.href = '/searches';
+                }
+            }
+        }
+    }
+</script>
+{% endblock %}
